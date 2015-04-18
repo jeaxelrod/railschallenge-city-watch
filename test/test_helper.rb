@@ -5,6 +5,16 @@ require 'database_cleaner'
 
 DatabaseCleaner.strategy = :truncation
 
+class ActiveSupport::TestCase 
+  setup do
+    DatabaseCleaner.start
+  end
+
+  teardown do
+    DatabaseCleaner.clean
+  end
+end
+
 module ActionDispatch
   class IntegrationTest
     def setup
