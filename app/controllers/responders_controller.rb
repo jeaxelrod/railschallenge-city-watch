@@ -1,4 +1,15 @@
 class RespondersController < ApplicationController
+  
+  def show
+    begin
+      @responder = Responder.find_by_name!(params[:name])
+    rescue ActiveRecord::RecordNotFound => e
+      render :status => 404
+    else
+      render @responder
+    end
+  end
+
   def create
     @responder = Responder.create(responder_params) 
     forbidden_attributes = [:emergency_code, :id, :on_duty]
