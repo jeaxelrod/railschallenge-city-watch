@@ -16,6 +16,12 @@ class EmergencyTest < ActiveSupport::TestCase
     end
   end
 
+  def test_code_cant_be_blank
+    assert_raise(ActiveRecord::RecordInvalid) do
+      FactoryGirl.create(:emergency, code: '')
+    end
+  end
+
   def test_fire_severity_cant_be_blank
     assert_raise(ActiveRecord::RecordInvalid) do
       FactoryGirl.create(:emergency, fire_severity: nil )
