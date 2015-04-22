@@ -1,5 +1,6 @@
 class Responder < ActiveRecord::Base
-  validates :type, no_change: true
-  validates :capacity, no_change: true, inclusion: 1..5
-  validates :name, uniqueness: true
+  self.inheritance_column = nil
+  validates :type, no_change: true, presence: true
+  validates :capacity, no_change: true, presence: true, inclusion: 1..5
+  validates :name, uniqueness: true, presence: true
 end

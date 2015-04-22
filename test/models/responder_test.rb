@@ -22,6 +22,12 @@ class ResponderTest < ActiveSupport::TestCase
     assert !responder.valid?
   end
 
+  def test_type_cant_be_blank
+    assert_raise(ActiveRecord::RecordInvalid) do
+      FactoryGirl.create(:responder, type: '')
+    end
+  end
+
   def test_capacity_cant_be_changed
     unless responder.capacity == 1
       responder.capacity -= 1
@@ -29,6 +35,12 @@ class ResponderTest < ActiveSupport::TestCase
       responder.capacity += 1
     end
     assert !responder.valid?
+  end
+
+  def test_capacity_cant_be_blank
+    assert_raise(ActiveRecord::RecordInvalid) do
+      FactoryGirl.create(:responder, capacity: '')
+    end
   end
 
   def test_capacity_valid_range_min
@@ -52,6 +64,12 @@ class ResponderTest < ActiveSupport::TestCase
   def test_name_is_unique
     assert_raise(ActiveRecord::RecordInvalid) do
       FactoryGirl.create(:responder, name: responder.name) 
+    end
+  end
+
+  def test_name_cant_be_blank
+    assert_raise(ActiveRecord::RecordInvalid) do
+      FactoryGirl.create(:responder, name: '')
     end
   end
 
