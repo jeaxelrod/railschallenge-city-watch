@@ -1,4 +1,9 @@
 class RespondersController < ApplicationController
+
+  def index
+    @responders = Responder.all
+    render { @responders }
+  end
   
   def show
     begin
