@@ -14,10 +14,6 @@ class RespondersController < ApplicationController
     end
   end
 
-  def matchResponder(severity, responders) 
-    responders.find { |responder| responder.capacity == severity } || responders.pop
-  end
-
   def show
     begin
       @responder = Responder.find_by_name!(params[:name])
@@ -129,5 +125,9 @@ class RespondersController < ApplicationController
       end
     end
     responders
+  end
+
+  def matchResponder(severity, responders) 
+    responders.find { |responder| responder.capacity == severity } || responders.pop
   end
 end

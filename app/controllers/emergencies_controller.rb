@@ -24,14 +24,54 @@ class EmergenciesController < ApplicationController
       @message = { message: 'found unpermitted parameter: resolved_at' }
       render json: @message, status: 422
     else
-      begin @emergency.save!
+      begin 
+        @emergency.save!
+        @emergency = @emergency.as_json
+        emergency_response = dispatch_responders(@emergency)
+        @emergency["responders"] = emergency_response[:responders]
+        @emergency["full_response"] = emergency_response[:full_response]
       rescue ActiveRecord::RecordInvalid => e
         @message = {message: e.record.errors.as_json}
         render json: @message, status: 422
       else
-        render @emergency, status: 201
+        render json: {emergency: @emergency}, status: 201
       end
     end
+  end
+
+  def dispatch_responders(emergency)
+    types = ['Fire', 'Police', 'Medical']
+    response = {}
+    emergency_responders = []
+    full_responses = []
+    types.each do |type|
+      severity = emergency["#{type.downcase}_severity"]
+      responders = Responder.where(type: type, on_duty: true).to_a.sort do |x, y|
+        x.capacity <=> y.capacity
+      end
+      emergency_response = fix_emergency(severity, responders) 
+      emergency_responders.concat(emergency_response[:responders])
+      full_responses.push(emergency_response[:full_response])
+    end
+    response[:responders] = emergency_responders.map { |responder| responder.name }
+    response[:full_response] = full_responses[0] && full_responses[1] && full_responses[2]
+    response
+  end
+
+  def fix_emergency(severity, responders)
+    response = { responders: []}
+    until severity <= 0 || responders.length == 0
+      responder = matchResponder(severity, responders)
+      responders.delete(responder)
+      response[:responders].push(responder)
+      severity -= responder.capacity
+    end
+    response[:full_response] = severity <= 0
+    response
+  end
+
+  def matchResponder(severity, responders)
+    responders.find { |responder| responder.capacity == severity } || responders.pop
   end
 
   def update
