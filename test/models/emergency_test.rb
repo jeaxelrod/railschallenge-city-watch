@@ -1,7 +1,6 @@
-require "test_helper"
+require 'test_helper'
 
 class EmergencyTest < ActiveSupport::TestCase
-
   def emergency
     @emergency ||= FactoryGirl.create(:emergency)
   end
@@ -24,7 +23,7 @@ class EmergencyTest < ActiveSupport::TestCase
 
   def test_fire_severity_cant_be_blank
     assert_raise(ActiveRecord::RecordInvalid) do
-      FactoryGirl.create(:emergency, fire_severity: nil )
+      FactoryGirl.create(:emergency, fire_severity: nil)
     end
   end
 
@@ -42,7 +41,7 @@ class EmergencyTest < ActiveSupport::TestCase
 
   def test_fire_severity_greater_or_equal_to_zero
     assert_raise(ActiveRecord::RecordInvalid) do
-      FactoryGirl.create(:emergency, fire_severity: -1 )
+      FactoryGirl.create(:emergency, fire_severity: -1)
     end
   end
 

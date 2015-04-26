@@ -1,5 +1,4 @@
-FactoryGirl.define do 
-
+FactoryGirl.define do
   sequence :emergency_serial do |n|
     10_000_000 + n
   end

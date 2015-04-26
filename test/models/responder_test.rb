@@ -1,9 +1,8 @@
-require "test_helper"
+require 'test_helper'
 
 class ResponderTest < ActiveSupport::TestCase
-
   def responder
-    @responder ||= FactoryGirl.create(:responder) 
+    @responder ||= FactoryGirl.create(:responder)
   end
 
   def test_valid
@@ -12,12 +11,12 @@ class ResponderTest < ActiveSupport::TestCase
 
   def test_type_cant_be_changed
     case responder.type
-    when "Police"
-      responder.type = "Fire"
-    when "Fire"
-      responder.type = "Medical"
-    when "Medical"
-      responder.type = "Police"
+    when 'Police'
+      responder.type = 'Fire'
+    when 'Fire'
+      responder.type = 'Medical'
+    when 'Medical'
+      responder.type = 'Police'
     end
     assert !responder.valid?
   end
@@ -29,10 +28,10 @@ class ResponderTest < ActiveSupport::TestCase
   end
 
   def test_capacity_cant_be_changed
-    unless responder.capacity == 1
-      responder.capacity -= 1
-    else
+    if responder.capacity == 1
       responder.capacity += 1
+    else
+      responder.capacity -= 1
     end
     assert !responder.valid?
   end
@@ -63,7 +62,7 @@ class ResponderTest < ActiveSupport::TestCase
 
   def test_name_is_unique
     assert_raise(ActiveRecord::RecordInvalid) do
-      FactoryGirl.create(:responder, name: responder.name) 
+      FactoryGirl.create(:responder, name: responder.name)
     end
   end
 
@@ -72,5 +71,4 @@ class ResponderTest < ActiveSupport::TestCase
       FactoryGirl.create(:responder, name: '')
     end
   end
-
 end

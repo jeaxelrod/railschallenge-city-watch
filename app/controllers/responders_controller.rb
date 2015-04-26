@@ -1,12 +1,11 @@
 class RespondersController < ApplicationController
-
   def index
     @responders = Responder.all
     if params[:show] == 'capacity'
-      types = ['Fire', 'Police', 'Medical']
+      types = %w(Fire Police Medical)
       @capacity = {}
       types.each do |type|
-        @capacity[type] = set_capacity(type)
+        @capacity[type] = make_capacity(type)
       end
       render json: { capacity: @capacity }
     else
@@ -15,36 +14,29 @@ class RespondersController < ApplicationController
   end
 
   def show
-    begin
-      @responder = Responder.find_by_name!(params[:name])
-    rescue ActiveRecord::RecordNotFound => e
-      render :status => 404
-    else
-      render @responder
-    end
+    @responder = Responder.find_by_name!(params[:name])
+  rescue ActiveRecord::RecordNotFound
+    render status: 404
+  else
+    render @responder
   end
 
   def create
-    @responder = Responder.create(responder_params) 
+    @responder = Responder.create(responder_params)
     forbidden_attributes = [:emergency_code, :id, :on_duty]
-    forbidden_attribute = false
     forbidden_attributes.each do |attr|
-      if params[:responder][attr]
-        @message = { message: "found unpermitted parameter: #{attr}" }
-        forbidden_attribute = true
-        render json: @message, status: 422
-        break;
-      end
+      next unless params[:responder][attr]
+      @message = { message: "found unpermitted parameter: #{attr}" }
+      render json: @message, status: 422
+      return
     end
-    unless forbidden_attribute
-      begin
-        @responder.save!
-      rescue (ActiveRecord::RecordInvalid) => e
-        @message = {message: e.record.errors.as_json}
-        render json: @message, status: 422
-      else
-        render @responder, status: 201
-      end
+    begin
+      @responder.save!
+    rescue (ActiveRecord::RecordInvalid) => e
+      @message = { message: e.record.errors.as_json }
+      render json: @message, status: 422
+    else
+      render @responder, status: 201
     end
   end
 
@@ -56,25 +48,24 @@ class RespondersController < ApplicationController
     else
       forbidden_attributes = [:name, :type, :emergency_code, :capacity]
       forbidden_attributes.each do |attr|
-        if params[:responder][attr]
-          @message = { message: "found unpermitted parameter: #{attr}" }
-          render json: @message, status: 422
-          break;
-        end
+        next unless params[:responder][attr]
+        @message = { message: "found unpermitted parameter: #{attr}" }
+        render json: @message, status: 422
+        break
       end
     end
   end
 
   def new
-    render json: {message: "page not found"}, status: 404
+    render json: { message: 'page not found' }, status: 404
   end
 
   def edit
-    render json: {message: "page not found"}, status: 404
+    render json: { message: 'page not found' }, status: 404
   end
 
   def destroy
-    render json: {message: "page not found"}, status: 404
+    render json: { message: 'page not found' }, status: 404
   end
 
   private
@@ -83,23 +74,20 @@ class RespondersController < ApplicationController
     params.require(:responder).permit(:type, :name, :capacity, :on_duty)
   end
 
-  def set_capacity(type)
+  def make_capacity(type)
     typed_responders              = Responder.where(type: type)
-    on_duty_responders            = typed_responders.select { |responder| responder.on_duty    }
+    on_duty_responders            = typed_responders.select(&:on_duty)
     available_on_duty_responders =  on_duty_responders.select { |responder| !responder.emergency_id  }
 
-    total                   = get_total_capacity(typed_responders             )
-    total_on_duty           = get_total_capacity(on_duty_responders           )
-    total_available_on_duty = get_total_capacity(available_on_duty_responders )
+    total                   = get_total_capacity(typed_responders)
+    total_on_duty           = get_total_capacity(on_duty_responders)
+    total_available_on_duty = get_total_capacity(available_on_duty_responders)
     total_available         = total - (total_on_duty - total_available_on_duty)
-    
+
     [total, total_available, total_on_duty, total_available_on_duty]
   end
 
-  
   def get_total_capacity(responders)
-    responders.inject(0) { |total_capacity, responder| total_capacity + responder.capacity }
+    responders.inject(0) { |a, e| a + e.capacity }
   end
-
-
 end
