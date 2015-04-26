@@ -5,8 +5,9 @@ class RespondersController < ApplicationController
     if params[:show] == 'capacity'
       types = ['Fire', 'Police', 'Medical']
       @capacity = {}
+      dispatcher = Dispatcher.new
       types.each do |type|
-        @capacity[type] = set_capacity(type) 
+        @capacity[type] = set_capacity(type, dispatcher) 
       end
       render json: { capacity: @capacity }
     else
@@ -83,51 +84,20 @@ class RespondersController < ApplicationController
     params.require(:responder).permit(:type, :name, :capacity, :on_duty)
   end
 
-  def set_capacity(type)
-    unresolved_emergencies = Emergency.where(resolved_at: nil)
-    typed_responders = Responder.where(type: type)
-    on_duty_responders  = typed_responders.where(on_duty: true)
-    not_duty_responders = typed_responders.where(on_duty: false)
-
-    total = get_total_capacity(typed_responders) 
-    total_on_duty = get_total_capacity(on_duty_responders)
-
-    on_duty_available = on_duty_responders_available({ responders:  on_duty_responders,
-                                                       emergencies: unresolved_emergencies,
-                                                       type:        type})
-    total_available_and_on_duty = get_total_capacity(on_duty_available)
-
-    available_responders = on_duty_available + not_duty_responders
-    total_available = get_total_capacity(available_responders)
-
-    [total, total_available, total_on_duty, total_available_and_on_duty]
+  def set_capacity(type, dispatcher)
+    total =                   get_total_capacity(dispatcher.responders.where(type: type))
+    total_on_duty =           get_total_capacity(dispatcher.on_duty_responders.where(type:type))
+    total_available_on_duty = get_total_capacity(dispatcher.available_on_duty_responders.
+                                where(type: type))
+    total_available =         total - (total_on_duty - total_available_on_duty)
+    
+    [total, total_available, total_on_duty, total_available_on_duty]
   end
 
+  
   def get_total_capacity(responders)
     responders.inject(0) { |total_capacity, responder| total_capacity + responder.capacity }
   end
 
-  def on_duty_responders_available(params)
-    type        = params[:type]
-    emergencies = params[:emergencies].to_a
-    responders  = params[:responders].to_a
-    emergency_severity_attr = "#{type.downcase}_severity"
 
-    emergencies.sort! { |x, y| y[emergency_severity_attr] <=> x[emergency_severity_attr] }
-    responders.sort! { |x, y| x.capacity <=> y.capacity }
-
-    emergencies.each do |emergency|
-      severity = emergency[emergency_severity_attr]
-      until severity <= 0 || responders.length == 0
-        responder = matchResponder(severity, responders)
-        responders.delete(responder)
-        severity -= responder.capacity
-      end
-    end
-    responders
-  end
-
-  def matchResponder(severity, responders) 
-    responders.find { |responder| responder.capacity == severity } || responders.pop
-  end
 end
