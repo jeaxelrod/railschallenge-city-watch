@@ -2,12 +2,8 @@ class EmergenciesController < ApplicationController
   
   def index
     @emergencies = Emergency.all.as_json
-    dispatcher = Dispatcher.new
-    puts dispatcher.results
+    num_resolved = Emergency.where(full_response: true).length
     total_emergencies = @emergencies.length
-    num_resolved = dispatcher.results.inject(0) do |total_resolved, result|
-      total_resolved +=  1  if result[:resolved][:all]
-    end
     full_responses = [num_resolved, total_emergencies]
 
     render json: { emergencies: @emergencies, full_responses: full_responses }
@@ -34,13 +30,17 @@ class EmergenciesController < ApplicationController
     else
       begin 
         @emergency.save!
-        @response = @emergency.as_json
-        dispatcher = Dispatcher.new
-        result = dispatcher.results.find { |result| result[:emergency] == @emergency }
+        dispatcher = Dispatcher.new(@emergency)
+        result = dispatcher.result
+        @emergency.update_attribute(:full_response, result[:resolved][:all])
+        result[:responders].each do |responder|
+          responder.update_attribute(:emergency_id, @emergency.id)
+        end
+        @emergency.save!
 
+        @response = @emergency.as_json
         @response["full_response"] = result[:resolved][:all]
         @response["responders"]    = result[:responders].map { |responder| responder.name }
-
       rescue ActiveRecord::RecordInvalid => e
         @message = {message: e.record.errors.as_json}
         render json: @message, status: 422
@@ -58,6 +58,12 @@ class EmergenciesController < ApplicationController
         render json: @message, status: 422
       else
         @emergency.update(emergency_params)
+        if @emergency.resolved_at
+          responders = Responder.where(emergency_id: @emergency.id)
+          responders.each do |responder|
+            responder.update_attribute(:emergency_id, nil)
+          end
+        end
         render @emergency
       end
     rescue ActiveRecord::RecordNotFound => e

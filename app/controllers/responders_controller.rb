@@ -5,9 +5,8 @@ class RespondersController < ApplicationController
     if params[:show] == 'capacity'
       types = ['Fire', 'Police', 'Medical']
       @capacity = {}
-      dispatcher = Dispatcher.new
       types.each do |type|
-        @capacity[type] = set_capacity(type, dispatcher) 
+        @capacity[type] = set_capacity(type)
       end
       render json: { capacity: @capacity }
     else
@@ -84,12 +83,15 @@ class RespondersController < ApplicationController
     params.require(:responder).permit(:type, :name, :capacity, :on_duty)
   end
 
-  def set_capacity(type, dispatcher)
-    total =                   get_total_capacity(dispatcher.responders.where(type: type))
-    total_on_duty =           get_total_capacity(dispatcher.on_duty_responders.where(type:type))
-    total_available_on_duty = get_total_capacity(dispatcher.available_on_duty_responders.
-                                where(type: type))
-    total_available =         total - (total_on_duty - total_available_on_duty)
+  def set_capacity(type)
+    typed_responders              = Responder.where(type: type)
+    on_duty_responders            = typed_responders.select { |responder| responder.on_duty    }
+    available_on_duty_responders =  on_duty_responders.select { |responder| !responder.emergency_id  }
+
+    total                   = get_total_capacity(typed_responders             )
+    total_on_duty           = get_total_capacity(on_duty_responders           )
+    total_available_on_duty = get_total_capacity(available_on_duty_responders )
+    total_available         = total - (total_on_duty - total_available_on_duty)
     
     [total, total_available, total_on_duty, total_available_on_duty]
   end
