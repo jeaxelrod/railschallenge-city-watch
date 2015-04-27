@@ -15,7 +15,7 @@ class Dispatcher
   end
 
   def dispatched_responders
-    @dispatched_responders  ||= []
+    @dispatched_responders ||= []
   end
 
   private

@@ -22,22 +22,12 @@ class RespondersController < ApplicationController
   end
 
   def create
-    @responder = Responder.create(responder_params)
-    forbidden_attributes = [:emergency_code, :id, :on_duty]
-    forbidden_attributes.each do |attr|
-      next unless params[:responder][attr]
-      @message = { message: "found unpermitted parameter: #{attr}" }
-      render json: @message, status: 422
-      return
-    end
-    begin
-      @responder.save!
-    rescue (ActiveRecord::RecordInvalid) => e
-      @message = { message: e.record.errors.as_json }
-      render json: @message, status: 422
-    else
-      render @responder, status: 201
-    end
+    return if render_create_forbidden_attribute
+    @responder = Responder.create!(responder_params)
+    render @responder, status: 201
+  rescue (ActiveRecord::RecordInvalid) => e
+    @message = { message: e.record.errors.as_json }
+    render json: @message, status: 422
   end
 
   def update
@@ -46,13 +36,7 @@ class RespondersController < ApplicationController
       @responder.update(responder_params)
       render @responder
     else
-      forbidden_attributes = [:name, :type, :emergency_code, :capacity]
-      forbidden_attributes.each do |attr|
-        next unless params[:responder][attr]
-        @message = { message: "found unpermitted parameter: #{attr}" }
-        render json: @message, status: 422
-        break
-      end
+      render_update_forbidden_attribute
     end
   end
 
@@ -72,6 +56,27 @@ class RespondersController < ApplicationController
 
   def responder_params
     params.require(:responder).permit(:type, :name, :capacity, :on_duty)
+  end
+
+  def render_create_forbidden_attribute
+    forbidden_attributes = [:emergency_code, :id, :on_duty]
+    forbidden_attribute = forbidden_attributes.any? do |attr|
+      next unless params[:responder][attr]
+      @message = { message: "found unpermitted parameter: #{attr}" }
+      render json: @message, status: 422
+      true
+    end
+    forbidden_attribute
+  end
+
+  def render_update_forbidden_attribute
+    forbidden_attributes = [:name, :type, :emergency_code, :capacity]
+    forbidden_attributes.any? do |attr|
+      next unless params[:responder][attr]
+      @message = { message: "found unpermitted parameter: #{attr}" }
+      render json: @message, status: 422
+      true
+    end
   end
 
   def make_capacity(type)
