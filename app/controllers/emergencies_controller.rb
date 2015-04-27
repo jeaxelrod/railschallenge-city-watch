@@ -28,16 +28,18 @@ class EmergenciesController < ApplicationController
       begin
         @emergency.save!
         dispatcher = Dispatcher.new(@emergency)
-        result = dispatcher.result
-        @emergency.update_attribute(:full_response, result[:resolved][:all])
-        result[:responders].each do |responder|
+        full_response = dispatcher.full_response
+        dispatched_responders = dispatcher.dispatched_responders
+
+        @emergency.update_attribute(:full_response, full_response)
+        dispatched_responders.each do |responder|
           responder.update_attribute(:emergency_id, @emergency.id)
         end
         @emergency.save!
 
         @response = @emergency.as_json
-        @response['full_response'] = result[:resolved][:all]
-        @response['responders']    = result[:responders].map(&:name)
+        @response['full_response'] = full_response
+        @response['responders']    = dispatched_responders.map(&:name)
       rescue ActiveRecord::RecordInvalid => e
         @message = { message: e.record.errors.as_json }
         render json: @message, status: 422

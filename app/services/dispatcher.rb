@@ -1,10 +1,12 @@
 class Dispatcher
   attr_accessor :emergency
-  attr_reader :results, :available_on_duty_responders
+  attr_reader :full_response, :available_on_duty_responders
   TYPES = [:fire, :police, :medical]
 
   def initialize(emergency)
     @emergency = emergency
+    @resolved = {}
+    TYPES.each { |type| @resolved[type] = false }
     dispatch
   end
 
@@ -13,15 +15,7 @@ class Dispatcher
   end
 
   def dispatched_responders
-    @dispatched_responders ||= { fire: [], police: [], medical: [] }
-  end
-
-  # A result contains result which is the following datatype:
-  #   { responders: Array of Responder,
-  #     resolved: [ fire: boolean, medical: boolean, police: boolean, all: boolean ] }
-  #
-  def result
-    @result ||= new_result
+    @dispatched_responders  ||= []
   end
 
   private
@@ -30,40 +24,35 @@ class Dispatcher
     TYPES.each do |type|
       send_responders(type)
     end
-    resolve_emergency
+    @full_response = TYPES.inject(true) { |a, e| a && @resolved[e] }
   end
 
   def send_responders(type)
     responders  = on_duty_responders_by_type(type).to_a
-    severity_attr = "#{type}_severity"
-    severity = @emergency[severity_attr]
+    severity = severity_by_type(type)
     until severity <= 0 || responders.length == 0
-
       responder = match_responder(severity, responders)
-      @available_on_duty_responders = available_on_duty_responders.where.not(id: responder.id)
-      dispatched_responders[type].push(responder)
       severity -= responder.capacity
-      result[:responders].push(responder)
+
+      update_available_responders(responder)
+      responders.delete(responder)
     end
-    result[:resolved][type] = true if severity <= 0
-  end
-
-  def new_result
-    resolved = {}
-    TYPES.each { |type| resolved[type] = false }
-    resolved[:all] = false
-
-    { resolved:   resolved,
-      responders: [] }
-  end
-
-  def resolve_emergency
-    result[:resolved][:all] = TYPES.inject(true) { |a, e| a && result[:resolved][e] }
+    @resolved[type] = true if severity <= 0
   end
 
   def on_duty_responders_by_type(type)
     type_attr = type.to_s.capitalize
     available_on_duty_responders.where(type: type_attr)
+  end
+
+  def severity_by_type(type)
+    severity_attr = "#{type}_severity"
+    @emergency[severity_attr]
+  end
+
+  def update_available_responders(responder)
+    dispatched_responders.push(responder)
+    @available_on_duty_responders = @available_on_duty_responders.where.not(id: responder.id)
   end
 
   def match_responder(severity, responders)
